@@ -1,0 +1,90 @@
+# ======================
+# Python / tooling
+# ======================
+__pycache__/
+*.py[cod]
+*$py.class
+
+*.pyd
+*.so
+
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+.dmypy.json
+.cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.venv.bak/
+
+# Logs
+*.log
+
+# ======================
+# ML / training outputs
+# ======================
+checkpoints/
+results/
+datasets/
+runs/
+wandb/
+mlruns/
+comet_ml/
+clearml/
+lightning_logs/
+
+# Model / tensor artifacts
+*.pth
+*.pt
+*.ckpt
+*.h5
+*.keras
+*.onnx
+*.tflite
+*.engine
+*.pb
+*.npz
+*.pkl
+*.pickle
+*.safetensors
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+*.pyc
+
+# ======================
+# Jupyter
+# ======================
+.ipynb_checkpoints/
+
+# ======================
+# Env / secrets (local-only)
+# ======================
+.env
+.env.*
+
+# ======================
+# IDE/editor
+# ======================
+.vscode/
+.idea/
+.sublime-project
+.sublime-workspace
+
+# ======================
+# OS
+# ======================
+.DS_Store
+Thumbs.db
+
