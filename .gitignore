@@ -26,9 +26,14 @@ venv/
 env/
 ENV/
 .venv.bak/
+pyenv/
 
 # Logs
 *.log
+logs/
+log/
+logs_train/
+logs_target/
 
 # ======================
 # ML / training outputs
@@ -62,6 +67,8 @@ lightning_logs/
 *.tgz
 *.zip
 *.pyc
+*.pyc
+*.whl
 
 # ======================
 # Jupyter
