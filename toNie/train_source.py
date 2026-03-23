@@ -49,7 +49,7 @@ parser.add_argument(
 )
 parser.add_argument(
     '--data-dir',
-    default='../Datasets/Fundus',
+    default='../framework/datasets/Fundus',
     help='data root path'
 )
 parser.add_argument(
