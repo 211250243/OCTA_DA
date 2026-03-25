@@ -2,7 +2,7 @@ import argparse
 parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-parser.add_argument('-g', '--gpu', type=str, default='7', help='gpu id')
+parser.add_argument('-g', '--gpu', type=str, default='0', help='gpu id')
 parser.add_argument('--resume', default=None, help='checkpoint path')
 parser.add_argument(
     '--dataset', type=str, default='Domain3', help='test folder id contain images ROIs to test'
