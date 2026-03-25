@@ -1,23 +1,23 @@
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('-g', '--gpu', type=str, default='0')
-parser.add_argument('--model-file', type=str, default='./logs_train/Domain3/source_model.pth.tar')
+parser.add_argument('--model-file', type=str, default='./logs_train/Domain1/20260325_094606.319125/checkpoint_200.pth.tar')
 parser.add_argument('--model', type=str, default='Deeplab', help='Deeplab')
 parser.add_argument('--out-stride', type=int, default=16)
 parser.add_argument('--sync-bn', type=bool, default=True)
 parser.add_argument('--freeze-bn', type=bool, default=False)
-parser.add_argument('--epoch', type=int, default=20)
-parser.add_argument('--lr', type=float, default=5e-4)
+parser.add_argument('--epoch', type=int, default=8)
+parser.add_argument('--lr', type=float, default=1e-4)
 parser.add_argument('--lr-decrease-rate', type=float, default=0.9, help='ratio multiplied to initial lr')
 parser.add_argument('--lr-decrease-epoch', type=int, default=1, help='interval epoch number for lr decrease')
 
-parser.add_argument('--data-dir', default='../framework/datasets/Fundus')
+parser.add_argument('--data-dir', default='../framework/datasets/OCTA-500')
 parser.add_argument('--dataset', type=str, default='Domain2')
-parser.add_argument('--model-source', type=str, default='Domain3')
+parser.add_argument('--model-source', type=str, default='Domain1')
 parser.add_argument('--batch-size', type=int, default=8)
 
-parser.add_argument('--model-ema-rate', type=float, default=0.98)
-parser.add_argument('--pseudo-label-threshold', type=float, default=0.75)
+parser.add_argument('--model-ema-rate', type=float, default=0.995)
+parser.add_argument('--pseudo-label-threshold', type=float, default=0.5)
 parser.add_argument('--mean-loss-calc-bound-ratio', type=float, default=0.2)
 
 args = parser.parse_args()
@@ -35,7 +35,7 @@ import torch
 from torch.autograd import Variable
 import tqdm
 from torch.utils.data import DataLoader
-from dataloaders import fundus_dataloader
+from dataloaders import octa_dataloader
 from dataloaders import custom_transforms as trans
 from torchvision import transforms
 # from scipy.misc import imsave
@@ -104,6 +104,8 @@ def init_feature_pred_bank(model, loader):
 
 
 def adapt_epoch(model_t, model_s, optim, train_loader, args, feature_bank, pred_bank, loss_weight=None):
+    model_t.eval()
+    model_s.train()
     for sample_w, sample_s in train_loader:
         imgs_w = sample_w['image']
         imgs_s = sample_s['image']
@@ -150,8 +152,7 @@ def adapt_epoch(model_t, model_s, optim, train_loader, args, feature_bank, pred_
 def eval(model, data_loader):
     model.eval()
 
-    val_dice = {'cup': np.array([]), 'disc': np.array([])}
-    val_assd = {'cup': np.array([]), 'disc': np.array([])}
+    val_dice = []
 
     with torch.no_grad():
         for batch_idx, sample in enumerate(data_loader):
@@ -159,33 +160,15 @@ def eval(model, data_loader):
             target_map = sample['label']
             data = data.cuda()
             predictions, _ = model(data)
+            dice = dice_coeff_binary(predictions, target_map)
+            val_dice.append(dice)
 
-            dice_cup, dice_disc = dice_coeff_2label(predictions, target_map)
-            val_dice['cup'] = np.append(val_dice['cup'], dice_cup)
-            val_dice['disc'] = np.append(val_dice['disc'], dice_disc)
-
-            assd = assd_compute(predictions, target_map)
-            val_assd['cup'] = np.append(val_assd['cup'], assd[:, 0])
-            val_assd['disc'] = np.append(val_assd['disc'], assd[:, 1])
-
-        avg_dice = [0.0, 0.0, 0.0, 0.0]
-        std_dice = [0.0, 0.0, 0.0, 0.0]
-        avg_assd = [0.0, 0.0, 0.0, 0.0]
-        std_assd = [0.0, 0.0, 0.0, 0.0]
-        avg_dice[0] = np.mean(val_dice['cup'])
-        avg_dice[1] = np.mean(val_dice['disc'])
-        std_dice[0] = np.std(val_dice['cup'])
-        std_dice[1] = np.std(val_dice['disc'])
-        val_assd['cup'] = np.delete(val_assd['cup'], np.where(val_assd['cup'] == -1))
-        val_assd['disc'] = np.delete(val_assd['disc'], np.where(val_assd['disc'] == -1))
-        avg_assd[0] = np.mean(val_assd['cup'])
-        avg_assd[1] = np.mean(val_assd['disc'])
-        std_assd[0] = np.std(val_assd['cup'])
-        std_assd[1] = np.std(val_assd['disc'])
+        avg_dice = float(np.mean(val_dice))
+        std_dice = float(np.std(val_dice))
 
     model.train()
 
-    return avg_dice, std_dice, avg_assd, std_assd
+    return avg_dice, std_dice
 
 
 def main():
@@ -202,36 +185,36 @@ def main():
     # dataset
     composed_transforms_train = transforms.Compose([
         trans.Resize(512),
-        trans.add_salt_pepper_noise(),
-        trans.adjust_light(),
-        trans.eraser(),
-        trans.Normalize_tf(),
-        trans.ToTensor()
+        trans.NormalizeOCTA(),
+        trans.ToTensorOCTA()
     ])
     composed_transforms_test = transforms.Compose([
         trans.Resize(512),
-        trans.Normalize_tf(),
-        trans.ToTensor()
+        trans.NormalizeOCTA(),
+        trans.ToTensorOCTA()
     ])
 
-    dataset_train = fundus_dataloader.FundusSegmentation_2transform(base_dir=args.data_dir, dataset=args.dataset,
-                                                                    split='train/ROIs',
-                                                                    transform_weak=composed_transforms_test,
-                                                                    transform_strong=composed_transforms_train)
-    dataset_train_weak = fundus_dataloader.FundusSegmentation(base_dir=args.data_dir, dataset=args.dataset,
-                                                              split='train/ROIs',
-                                                              transform=composed_transforms_test)
-    dataset_test = fundus_dataloader.FundusSegmentation(base_dir=args.data_dir, dataset=args.dataset, split='test/ROIs',
-                                         transform=composed_transforms_test)
+    split_train = 'train'
+    split_test = 'value'
+
+    dataset_train = octa_dataloader.OCTASegmentation_2transform(base_dir=args.data_dir, dataset=args.dataset,
+                                                                split=split_train,
+                                                                transform_weak=composed_transforms_test,
+                                                                transform_strong=composed_transforms_train)
+    dataset_train_weak = octa_dataloader.OCTASegmentation(base_dir=args.data_dir, dataset=args.dataset,
+                                                          split=split_train,
+                                                          transform=composed_transforms_test)
+    dataset_test = octa_dataloader.OCTASegmentation(base_dir=args.data_dir, dataset=args.dataset, split=split_test,
+                                     transform=composed_transforms_test)
 
     train_loader = DataLoader(dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=2)
     train_loader_weak = DataLoader(dataset_train_weak, batch_size=args.batch_size, shuffle=False, num_workers=2)
     test_loader = DataLoader(dataset_test, batch_size=args.batch_size, shuffle=False, num_workers=2)
 
     # model
-    model_s = netd.DeepLab(num_classes=2, backbone='mobilenet', output_stride=args.out_stride, sync_bn=args.sync_bn,
+    model_s = netd.DeepLab(num_classes=1, backbone='mobilenet', output_stride=args.out_stride, sync_bn=args.sync_bn,
                            freeze_bn=args.freeze_bn)
-    model_t = netd.DeepLab(num_classes=2, backbone='mobilenet', output_stride=args.out_stride, sync_bn=args.sync_bn,
+    model_t = netd.DeepLab(num_classes=1, backbone='mobilenet', output_stride=args.out_stride, sync_bn=args.sync_bn,
                            freeze_bn=args.freeze_bn)
 
 
@@ -261,10 +244,8 @@ def main():
 
     feature_bank, pred_bank = init_feature_pred_bank(model_s, train_loader_weak)
 
-    avg_dice, std_dice, avg_assd, std_assd = eval(model_t, test_loader)
-    log_str = ("initial dice: cup: %.4f+-%.4f disc: %.4f+-%.4f avg: %.4f, assd: cup: %.4f+-%.4f disc: %.4f+-%.4f avg: %.4f" % (
-            avg_dice[0], std_dice[0], avg_dice[1], std_dice[1], (avg_dice[0] + avg_dice[1]) / 2.0,
-            avg_assd[0], std_assd[0], avg_assd[1], std_assd[1], (avg_assd[0] + avg_assd[1]) / 2.0))
+    avg_dice, std_dice = eval(model_t, test_loader)
+    log_str = ("initial dice: %.4f+-%.4f" % (avg_dice, std_dice))
     print(log_str)
     args.out_file.write(log_str + '\n')
     args.out_file.flush()
@@ -294,18 +275,14 @@ def main():
 
         scheduler.step()
 
-        avg_dice, std_dice, avg_assd, std_assd = eval(model_t, test_loader)
-        log_str = ("teacher dice: cup: %.4f+-%.4f disc: %.4f+-%.4f avg: %.4f, assd: cup: %.4f+-%.4f disc: %.4f+-%.4f avg: %.4f" % (
-            avg_dice[0], std_dice[0], avg_dice[1], std_dice[1], (avg_dice[0] + avg_dice[1]) / 2.0,
-            avg_assd[0], std_assd[0], avg_assd[1], std_assd[1], (avg_assd[0] + avg_assd[1]) / 2.0))
+        avg_dice, std_dice = eval(model_t, test_loader)
+        log_str = ("teacher dice: %.4f+-%.4f" % (avg_dice, std_dice))
         print(log_str)
         args.out_file.write(log_str + '\n')
         args.out_file.flush()
 
-        avg_dice, std_dice, avg_assd, std_assd = eval(model_s, test_loader)
-        log_str = ("student dice: cup: %.4f+-%.4f disc: %.4f+-%.4f avg: %.4f, assd: cup: %.4f+-%.4f disc: %.4f+-%.4f avg: %.4f" % (
-                avg_dice[0], std_dice[0], avg_dice[1], std_dice[1], (avg_dice[0] + avg_dice[1]) / 2.0,
-                avg_assd[0], std_assd[0], avg_assd[1], std_assd[1], (avg_assd[0] + avg_assd[1]) / 2.0))
+        avg_dice, std_dice = eval(model_s, test_loader)
+        log_str = ("student dice: %.4f+-%.4f" % (avg_dice, std_dice))
         print(log_str)
         args.out_file.write(log_str + '\n')
         args.out_file.flush()

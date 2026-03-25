@@ -11,7 +11,7 @@ parser.add_argument('--lr', type=float, default=5e-4)
 parser.add_argument('--lr-decrease-rate', type=float, default=0.9, help='ratio multiplied to initial lr')
 parser.add_argument('--lr-decrease-epoch', type=int, default=1, help='interval epoch number for lr decrease')
 
-parser.add_argument('--data_dir', default='E:/dataset/Medical Image Dataset/Fundus/')
+parser.add_argument('--data_dir', default='../framework/datasets/Fundus')
 parser.add_argument('--dataset', type=str, default='Domain2')
 parser.add_argument('--model-source', type=str, default='Domain3')
 parser.add_argument('--batch_size', type=int, default=8)

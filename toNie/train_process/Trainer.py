@@ -51,15 +51,15 @@ class Trainer(object):
         if not osp.exists(self.out):
             os.makedirs(self.out)
 
+        # 验证集为二值分割（Fundus cup/disc 或 OCTA 血管等）：loss + 单一 mean dice
         self.log_headers = [
             'epoch',
             'iteration',
             'train/loss_seg',
-            'valid/loss_CE',
-            'valid/cup_dice',
-            'valid/disc_dice',
+            'valid/loss_BCE',
+            'valid/dice',
             'elapsed_time',
-            'best_epoch'
+            'best_epoch',
         ]
         if not osp.exists(osp.join(self.out, 'log.csv')):
             with open(osp.join(self.out, 'log.csv'), 'w') as f:
@@ -77,12 +77,12 @@ class Trainer(object):
         self.best_epoch = -1
 
 
-    def validate_fundus(self):
+    def validate_octa(self):
         training = self.model.training
         self.model.eval()
 
         val_loss = 0.0
-        val_fundus_dice = {'cup': 0.0, 'disc': 0.0}
+        val_dice = 0.0
         data_num_cnt = 0.0
         metrics = []
         with torch.no_grad():
@@ -103,21 +103,18 @@ class Trainer(object):
                     raise ValueError('loss is nan while validating')
                 val_loss += loss_data
 
-                dice_cup, dice_disc = dice_coeff_2label(predictions, target_map)
-                val_fundus_dice['cup'] += np.sum(dice_cup)
-                val_fundus_dice['disc'] += np.sum(dice_disc)
-                data_num_cnt += float(dice_cup.shape[0])
+                dice_val = dice_coeff_binary(predictions, target_map)
+                val_dice += dice_val
+                data_num_cnt += 1.0
 
             val_loss /= data_num_cnt
-            val_fundus_dice['cup'] /= data_num_cnt
-            val_fundus_dice['disc'] /= data_num_cnt
-            metrics.append((val_loss, val_fundus_dice['cup'], val_fundus_dice['disc']))
+            val_dice /= data_num_cnt
+            metrics.append((val_loss, val_dice))
 
-            self.writer.add_scalar('val_data/loss_CE', val_loss, self.epoch * (len(self.domain_loader)))
-            self.writer.add_scalar('val_data/val_CUP_dice', val_fundus_dice['cup'], self.epoch * (len(self.domain_loader)))
-            self.writer.add_scalar('val_data/val_DISC_dice', val_fundus_dice['disc'], self.epoch * (len(self.domain_loader)))
+            self.writer.add_scalar('val_data/loss_BCE', val_loss, self.epoch * (len(self.domain_loader)))
+            self.writer.add_scalar('val_data/dice', val_dice, self.epoch * (len(self.domain_loader)))
 
-            mean_dice = (val_fundus_dice['cup'] + val_fundus_dice['disc'])/2
+            mean_dice = val_dice
             is_best = mean_dice > self.best_mean_dice
             if is_best:
                 self.best_epoch = self.epoch + 1
@@ -149,8 +146,7 @@ class Trainer(object):
                     datetime.now(pytz.timezone(self.time_zone)) -
                     self.timestamp_start).total_seconds()
                 log = [self.epoch, self.iteration] + [''] + list(metrics) + [elapsed_time] + [self.best_epoch]
-                log = map(str, log)
-                f.write(','.join(log) + '\n')
+                f.write(','.join(map(str, log)) + '\n')
             self.writer.add_scalar('best_model_epoch', self.best_epoch, self.epoch * (len(self.domain_loader)))
             if training:
                 self.model.train()
@@ -184,7 +180,6 @@ class Trainer(object):
             loss_seg = bceloss(pred, target_map)
 
             self.running_seg_loss += loss_seg.item()
-            self.running_seg_loss /= len(self.domain_loader)
 
             loss_seg_data = loss_seg.data.item()
             if np.isnan(loss_seg_data):
@@ -198,13 +193,9 @@ class Trainer(object):
                 grid_image = make_grid(image[0, ...].clone().cpu().data, 1, normalize=True)
                 self.writer.add_image('Domain/image', grid_image, iteration)
                 grid_image = make_grid(target_map[0, 0, ...].clone().cpu().data, 1, normalize=True)
-                self.writer.add_image('Domain/target_cup', grid_image, iteration)
-                grid_image = make_grid(target_map[0, 1, ...].clone().cpu().data, 1, normalize=True)
-                self.writer.add_image('Domain/target_disc', grid_image, iteration)
+                self.writer.add_image('Domain/target', grid_image, iteration)
                 grid_image = make_grid(pred[0, 0, ...].clone().cpu().data, 1, normalize=True)
-                self.writer.add_image('Domain/prediction_cup', grid_image, iteration)
-                grid_image = make_grid(pred[0, 1, ...].clone().cpu().data, 1, normalize=True)
-                self.writer.add_image('Domain/prediction_disc', grid_image, iteration)
+                self.writer.add_image('Domain/prediction', grid_image, iteration)
 
 
             self.writer.add_scalar('train/loss_seg', loss_seg_data, iteration)
@@ -213,9 +204,12 @@ class Trainer(object):
                 elapsed_time = (
                     datetime.now(pytz.timezone(self.time_zone)) -
                     self.timestamp_start).total_seconds()
-                log = [self.epoch, self.iteration] + [loss_seg_data] + [''] * 3 + [elapsed_time] + ['']
-                log = map(str, log)
-                f.write(','.join(log) + '\n')
+                log = [self.epoch, self.iteration] + [loss_seg_data] + [''] * 2 + [elapsed_time] + ['']
+                f.write(','.join(map(str, log)) + '\n')
+
+        n_batches = len(self.domain_loader)
+        if n_batches > 0:
+            self.running_seg_loss /= n_batches
 
         stop_time = timeit.default_timer()
 
@@ -236,7 +230,7 @@ class Trainer(object):
             self.writer.add_scalar('lr', get_lr(self.optim), self.epoch * (len(self.domain_loader)))
 
             if (self.epoch+1) % self.interval_validate == 0:
-                self.validate_fundus()
+                self.validate_octa()
         self.writer.close()
 
 

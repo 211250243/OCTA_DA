@@ -25,8 +25,8 @@ def dice_coefficient_numpy(binary_segmentation, binary_gt_label):
     '''
 
     # turn all variables to booleans, just in case
-    binary_segmentation = np.asarray(binary_segmentation, dtype=np.bool)
-    binary_gt_label = np.asarray(binary_gt_label, dtype=np.bool)
+    binary_segmentation = np.asarray(binary_segmentation, dtype=bool)
+    binary_gt_label = np.asarray(binary_gt_label, dtype=bool)
 
     # compute the intersection
     intersection = np.logical_and(binary_segmentation, binary_gt_label)
@@ -59,8 +59,8 @@ def dice_coefficient_numpy_3D(binary_segmentation, binary_gt_label):
     '''
 
     # turn all variables to booleans, just in case
-    binary_segmentation = np.asarray(binary_segmentation, dtype=np.bool)
-    binary_gt_label = np.asarray(binary_gt_label, dtype=np.bool)
+    binary_segmentation = np.asarray(binary_segmentation, dtype=bool)
+    binary_gt_label = np.asarray(binary_gt_label, dtype=bool)
 
     # compute the intersection
     intersection = np.logical_and(binary_segmentation, binary_gt_label)
@@ -152,6 +152,28 @@ def dice_coeff_2label(pred, target):
     pred[pred <= 0.75] = 0
     return dice_coefficient_numpy(pred[:, 0, ...], target[:, 0, ...]), dice_coefficient_numpy(pred[:, 1, ...],
                                                                                               target[:, 1, ...])
+
+
+def dice_coeff_binary(pred, target, threshold: float = 0.5):
+    """
+    单通道二值分割的 Dice。
+    pred: tensor, logits 或概率，形状 [B,1,H,W] 或 [B,H,W]
+    target: tensor, 0/1，形状与 pred 匹配
+    """
+    if pred.dim() == 3:
+        pred = pred.unsqueeze(1)
+    if target.dim() == 3:
+        target = target.unsqueeze(1)
+    pred = torch.sigmoid(pred)
+    pred = pred.data.cpu()
+    target = target.data.cpu()
+    pred_bin = (pred > threshold).float()
+    target_bin = (target > 0.5).float()
+
+    intersection = (pred_bin * target_bin).sum(dim=(2, 3))
+    union = pred_bin.sum(dim=(2, 3)) + target_bin.sum(dim=(2, 3))
+    dice = (2 * intersection + 1e-8) / (union + 1e-8)
+    return dice.mean().item()
 
 
 def dice_coeff_4label(pred, target):

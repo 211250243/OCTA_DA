@@ -642,6 +642,47 @@ class Normalize_tf(object):
                }
 
 
+# ======================
+# OCTA (单通道血管) 专用
+# ======================
+class NormalizeOCTA(object):
+    """
+    简单归一化：
+    - 图像：float32, /255
+    - 标签：阈值化为 0/1
+    """
+    def __init__(self, threshold: float = 0.5):
+        self.threshold = threshold
+
+    def __call__(self, sample):
+        img = np.array(sample['image']).astype(np.float32) / 255.0  # [H,W,3]
+        lbl = np.array(sample['label']).astype(np.float32) / 255.0  # [H,W]
+        lbl = (lbl > self.threshold).astype(np.float32)
+        return {'image': img,
+                'label': lbl,
+                'img_name': sample['img_name']}
+
+
+class ToTensorOCTA(object):
+    """将 OCTA 样本转成 Tensor；图像 [3,H,W]，标签 [1,H,W]"""
+    def __call__(self, sample):
+        img = sample['image']
+        lbl = sample['label']
+        if img.ndim == 2:
+            img = np.expand_dims(img, axis=-1)
+            img = np.repeat(img, 3, axis=-1)
+        img = img.transpose((2, 0, 1))  # HWC -> CHW
+        img = torch.from_numpy(img).float()
+
+        if lbl.ndim == 2:
+            lbl = np.expand_dims(lbl, axis=0)  # 1,H,W
+        lbl = torch.from_numpy(lbl).float()
+
+        return {'image': img,
+                'label': lbl,
+                'img_name': sample['img_name']}
+
+
 class Normalize_cityscapes(object):
     """Normalize a tensor image with mean and standard deviation.
     Args:

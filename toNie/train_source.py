@@ -2,10 +2,10 @@ import argparse
 parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-parser.add_argument('-g', '--gpu', type=str, default='7', help='gpu id')
+parser.add_argument('-g', '--gpu', type=str, default='0', help='gpu id')
 parser.add_argument('--resume', default=None, help='checkpoint path')
 parser.add_argument(
-    '--dataset', type=str, default='Domain3', help='test folder id contain images ROIs to test'
+    '--dataset', type=str, default='Domain1', help='test folder id contain images ROIs to test'
 )
 parser.add_argument(
     '--model', type=str, default='Deeplab', help='Deeplab'
@@ -49,7 +49,7 @@ parser.add_argument(
 )
 parser.add_argument(
     '--data-dir',
-    default='../framework/datasets/Fundus',
+    default='../framework/datasets/OCTA-500',
     help='data root path'
 )
 parser.add_argument(
@@ -87,7 +87,7 @@ import yaml
 from train_process import Trainer
 
 # Custom includes
-from dataloaders import fundus_dataloader
+from dataloaders import octa_dataloader
 from dataloaders import custom_transforms as trans
 from networks.deeplabv3 import *
 
@@ -116,36 +116,34 @@ def main():
         trans.RandomScaleCrop(512),
         trans.RandomRotate(),
         trans.RandomFlip(),
-        trans.elastic_transform(),
-        trans.add_salt_pepper_noise(),
-        trans.adjust_light(),
-        trans.eraser(),
-        trans.Normalize_tf(),
-        trans.ToTensor()
+        trans.NormalizeOCTA(),
+        trans.ToTensorOCTA()
     ])
 
     composed_transforms_ts = transforms.Compose([
-        # fundus_trans.RandomCrop(512),
         trans.Resize(512),
-        trans.Normalize_tf(),  # this function separates (raw ground truth mask) into (2 masks)
-        trans.ToTensor()
+        trans.NormalizeOCTA(),
+        trans.ToTensorOCTA()
     ])
 
+    split_train = 'train'
+    split_val = 'value'
+
     if args.no_augmentation:
-        domain = fundus_dataloader.FundusSegmentation(base_dir=args.data_dir, dataset=args.dataset,
-                                                      split='train/ROIs', transform=composed_transforms_ts)
+        domain = octa_dataloader.OCTASegmentation(base_dir=args.data_dir, dataset=args.dataset,
+                                                  split=split_train, transform=composed_transforms_ts)
     else:
-        domain = fundus_dataloader.FundusSegmentation(base_dir=args.data_dir, dataset=args.dataset,
-                                                      split='train/ROIs', transform=composed_transforms_tr)
+        domain = octa_dataloader.OCTASegmentation(base_dir=args.data_dir, dataset=args.dataset,
+                                                  split=split_train, transform=composed_transforms_tr)
     domain_loader = DataLoader(domain, batch_size=args.batch_size, shuffle=True, num_workers=2, pin_memory=True)
 
-    domain_val = fundus_dataloader.FundusSegmentation(base_dir=args.data_dir, dataset=args.dataset,
-                                                      split='test/ROIs', transform=composed_transforms_ts)
+    domain_val = octa_dataloader.OCTASegmentation(base_dir=args.data_dir, dataset=args.dataset,
+                                                  split=split_val, transform=composed_transforms_ts)
     domain_loader_val = DataLoader(domain_val, batch_size=args.batch_size, shuffle=False, num_workers=2,
                                    pin_memory=True)
 
     # 2. model
-    model = DeepLab(num_classes=2, backbone='mobilenet', output_stride=args.out_stride,
+    model = DeepLab(num_classes=1, backbone='mobilenet', output_stride=args.out_stride,
                                 sync_bn=args.sync_bn, freeze_bn=args.freeze_bn)
     if cuda:
         model = model.cuda()
