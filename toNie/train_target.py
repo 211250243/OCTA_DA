@@ -149,10 +149,11 @@ def adapt_epoch(model_t, model_s, optim, train_loader, args, feature_bank, pred_
             pred_bank[img_name[idx]] = predictions_tea_w_sigmoid[idx].detach().clone()
 
 
-def eval(model, data_loader):
+def eval(model, data_loader, dice_threshold=0.5):
     model.eval()
 
     val_dice = []
+    val_assd = np.array([])
 
     with torch.no_grad():
         for batch_idx, sample in enumerate(data_loader):
@@ -160,15 +161,25 @@ def eval(model, data_loader):
             target_map = sample['label']
             data = data.cuda()
             predictions, _ = model(data)
-            dice = dice_coeff_binary(predictions, target_map)
+            dice = dice_coeff_binary(predictions, target_map, threshold=dice_threshold)
             val_dice.append(dice)
+
+            assd = assd_compute(predictions, target_map, threshold=dice_threshold)
+            val_assd = np.append(val_assd, assd[:, 0])
 
         avg_dice = float(np.mean(val_dice))
         std_dice = float(np.std(val_dice))
+        val_assd = np.delete(val_assd, np.where(val_assd == -1))
+        if val_assd.size == 0:
+            avg_assd = float('nan')
+            std_assd = float('nan')
+        else:
+            avg_assd = float(np.mean(val_assd))
+            std_assd = float(np.std(val_assd))
 
     model.train()
 
-    return avg_dice, std_dice
+    return avg_dice, std_dice, avg_assd, std_assd
 
 
 def main():
@@ -244,8 +255,8 @@ def main():
 
     feature_bank, pred_bank = init_feature_pred_bank(model_s, train_loader_weak)
 
-    avg_dice, std_dice = eval(model_t, test_loader)
-    log_str = ("initial dice: %.4f+-%.4f" % (avg_dice, std_dice))
+    avg_dice, std_dice, avg_assd, std_assd = eval(model_t, test_loader)
+    log_str = ("initial dice: %.4f+-%.4f, assd: %.4f+-%.4f" % (avg_dice, std_dice, avg_assd, std_assd))
     print(log_str)
     args.out_file.write(log_str + '\n')
     args.out_file.flush()
@@ -275,14 +286,14 @@ def main():
 
         scheduler.step()
 
-        avg_dice, std_dice = eval(model_t, test_loader)
-        log_str = ("teacher dice: %.4f+-%.4f" % (avg_dice, std_dice))
+        avg_dice, std_dice, avg_assd, std_assd = eval(model_t, test_loader)
+        log_str = ("teacher dice: %.4f+-%.4f, assd: %.4f+-%.4f" % (avg_dice, std_dice, avg_assd, std_assd))
         print(log_str)
         args.out_file.write(log_str + '\n')
         args.out_file.flush()
 
-        avg_dice, std_dice = eval(model_s, test_loader)
-        log_str = ("student dice: %.4f+-%.4f" % (avg_dice, std_dice))
+        avg_dice, std_dice, avg_assd, std_assd = eval(model_s, test_loader)
+        log_str = ("student dice: %.4f+-%.4f, assd: %.4f+-%.4f" % (avg_dice, std_dice, avg_assd, std_assd))
         print(log_str)
         args.out_file.write(log_str + '\n')
         args.out_file.flush()

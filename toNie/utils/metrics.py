@@ -211,12 +211,12 @@ def DiceLoss(input, target):
                 (iflat.sum() + tflat.sum() + smooth))
 
 
-def assd_compute(pred, target):
+def assd_compute(pred, target, threshold: float = 0.75):
     target = target.data.cpu()
     pred = torch.sigmoid(pred)
     pred = pred.data.cpu()
-    pred[pred > 0.75] = 1
-    pred[pred <= 0.75] = 0
+    pred[pred > threshold] = 1
+    pred[pred <= threshold] = 0
 
     assd = np.zeros([pred.shape[0], pred.shape[1]])
     for i in range(pred.shape[0]):
