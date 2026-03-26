@@ -1,0 +1,104 @@
+train_target.py
+==========================================
+gpu:0
+model_file:./logs_train/Domain3/source_model.pth.tar
+model:Deeplab
+out_stride:16
+sync_bn:True
+freeze_bn:False
+epoch:20
+lr:0.0005
+lr_decrease_rate:0.9
+lr_decrease_epoch:1
+data_dir:../framework/datasets/Fundus
+dataset:Domain2
+model_source:Domain3
+batch_size:8
+model_ema_rate:0.98
+pseudo_label_threshold:0.75
+mean_loss_calc_bound_ratio:0.2
+out:/remote-home/nieercong/OCTA/toNie/logs_target/Domain2/20260324_051840.258219
+out_file:<_io.TextIOWrapper name='/remote-home/nieercong/OCTA/toNie/logs_target/Domain2/20260324_051840.258219/20260324_051840.258219.txt' mode='w' encoding='UTF-8'>
+
+==> Loading DeepLab model file: ./logs_train/Domain3/source_model.pth.tar
+initial dice: cup: 0.7675+-0.1622 disc: 0.8877+-0.0379 avg: 0.8276, assd: cup: 9.7537+-4.8412 disc: 10.4818+-3.7509 avg: 10.1178
+
+epoch 1/20:
+teacher dice: cup: 0.8006+-0.1658 disc: 0.8556+-0.0589 avg: 0.8281, assd: cup: 8.3983+-6.5287 disc: 17.0107+-13.8571 avg: 12.7045
+student dice: cup: 0.7671+-0.1222 disc: 0.8324+-0.0619 avg: 0.7997, assd: cup: 12.0653+-9.3815 disc: 21.0355+-15.7643 avg: 16.5504
+
+epoch 2/20:
+teacher dice: cup: 0.8070+-0.1542 disc: 0.8391+-0.0794 avg: 0.8231, assd: cup: 9.3569+-9.9857 disc: 21.0317+-18.2828 avg: 15.1943
+student dice: cup: 0.7763+-0.1728 disc: 0.8585+-0.0941 avg: 0.8174, assd: cup: 13.3664+-18.7990 disc: 17.0948+-18.2333 avg: 15.2306
+
+epoch 3/20:
+teacher dice: cup: 0.8003+-0.1519 disc: 0.8532+-0.0711 avg: 0.8268, assd: cup: 9.6522+-9.2697 disc: 18.2731+-16.0996 avg: 13.9626
+student dice: cup: 0.7974+-0.1401 disc: 0.8837+-0.0388 avg: 0.8405, assd: cup: 8.7389+-4.5235 disc: 10.9881+-4.0168 avg: 9.8635
+
+epoch 4/20:
+teacher dice: cup: 0.8043+-0.1507 disc: 0.8624+-0.0626 avg: 0.8334, assd: cup: 9.3538+-8.2111 disc: 15.8453+-12.7938 avg: 12.5995
+student dice: cup: 0.8084+-0.1447 disc: 0.9069+-0.0388 avg: 0.8576, assd: cup: 8.3318+-5.4540 disc: 9.0118+-4.9881 avg: 8.6718
+
+epoch 5/20:
+teacher dice: cup: 0.8005+-0.1533 disc: 0.8772+-0.0545 avg: 0.8389, assd: cup: 9.7373+-8.5031 disc: 13.3665+-10.2702 avg: 11.5519
+student dice: cup: 0.8070+-0.1456 disc: 0.9057+-0.0377 avg: 0.8564, assd: cup: 8.9031+-6.2930 disc: 9.1266+-4.3978 avg: 9.0149
+
+epoch 6/20:
+teacher dice: cup: 0.7937+-0.1564 disc: 0.8857+-0.0504 avg: 0.8397, assd: cup: 10.1284+-8.6791 disc: 12.1997+-9.1481 avg: 11.1641
+student dice: cup: 0.7897+-0.1557 disc: 0.9022+-0.0411 avg: 0.8460, assd: cup: 9.9471+-6.7007 disc: 9.4585+-4.5673 avg: 9.7028
+
+epoch 7/20:
+teacher dice: cup: 0.7961+-0.1564 disc: 0.8941+-0.0472 avg: 0.8451, assd: cup: 9.9518+-8.5254 disc: 10.9865+-7.8738 avg: 10.4692
+student dice: cup: 0.7990+-0.1568 disc: 0.9166+-0.0398 avg: 0.8578, assd: cup: 10.1253+-9.2782 disc: 8.3935+-6.1355 avg: 9.2594
+
+epoch 8/20:
+teacher dice: cup: 0.7947+-0.1435 disc: 0.8975+-0.0466 avg: 0.8461, assd: cup: 10.8913+-9.3389 disc: 10.6491+-8.2037 avg: 10.7702
+student dice: cup: 0.8062+-0.1490 disc: 0.9097+-0.0387 avg: 0.8580, assd: cup: 8.6779+-5.7810 disc: 8.9612+-5.6816 avg: 8.8195
+
+epoch 9/20:
+teacher dice: cup: 0.7975+-0.1553 disc: 0.9039+-0.0438 avg: 0.8507, assd: cup: 9.8635+-7.9174 disc: 9.7290+-6.7409 avg: 9.7962
+student dice: cup: 0.8015+-0.1524 disc: 0.9198+-0.0410 avg: 0.8606, assd: cup: 8.8808+-6.3718 disc: 7.9952+-6.0456 avg: 8.4380
+
+epoch 10/20:
+teacher dice: cup: 0.7929+-0.1561 disc: 0.9094+-0.0432 avg: 0.8511, assd: cup: 10.1277+-8.2521 disc: 9.0655+-6.6175 avg: 9.5966
+student dice: cup: 0.7998+-0.1477 disc: 0.9185+-0.0391 avg: 0.8592, assd: cup: 8.9180+-5.9415 disc: 7.9095+-5.6340 avg: 8.4137
+
+epoch 11/20:
+teacher dice: cup: 0.7922+-0.1451 disc: 0.9101+-0.0442 avg: 0.8511, assd: cup: 11.1088+-9.9213 disc: 9.1942+-7.6798 avg: 10.1515
+student dice: cup: 0.8006+-0.1475 disc: 0.9226+-0.0369 avg: 0.8616, assd: cup: 9.3158+-6.5004 disc: 7.3482+-4.6174 avg: 8.3320
+
+epoch 12/20:
+teacher dice: cup: 0.7913+-0.1534 disc: 0.9157+-0.0415 avg: 0.8535, assd: cup: 10.3880+-8.2024 disc: 8.2530+-6.3303 avg: 9.3205
+student dice: cup: 0.7883+-0.1519 disc: 0.9277+-0.0359 avg: 0.8580, assd: cup: 9.6450+-6.1081 disc: 6.6754+-3.6186 avg: 8.1602
+
+epoch 13/20:
+teacher dice: cup: 0.7848+-0.1480 disc: 0.9161+-0.0432 avg: 0.8505, assd: cup: 11.6955+-11.0845 disc: 8.2217+-6.4395 avg: 9.9586
+student dice: cup: 0.7979+-0.1529 disc: 0.9306+-0.0352 avg: 0.8642, assd: cup: 9.2386+-6.3974 disc: 6.2792+-3.2870 avg: 7.7589
+
+epoch 14/20:
+teacher dice: cup: 0.7868+-0.1504 disc: 0.9216+-0.0405 avg: 0.8542, assd: cup: 10.6791+-8.4800 disc: 7.6473+-5.9449 avg: 9.1632
+student dice: cup: 0.7892+-0.1536 disc: 0.9301+-0.0340 avg: 0.8596, assd: cup: 9.3954+-5.9178 disc: 6.3005+-3.1365 avg: 7.8480
+
+epoch 15/20:
+teacher dice: cup: 0.7906+-0.1529 disc: 0.9244+-0.0384 avg: 0.8575, assd: cup: 9.9578+-6.9453 disc: 7.2093+-4.7331 avg: 8.5836
+student dice: cup: 0.7885+-0.1558 disc: 0.9347+-0.0323 avg: 0.8616, assd: cup: 9.4427+-6.1828 disc: 5.8521+-2.9317 avg: 7.6474
+
+epoch 16/20:
+teacher dice: cup: 0.7846+-0.1519 disc: 0.9263+-0.0379 avg: 0.8554, assd: cup: 10.5666+-7.4225 disc: 6.9846+-4.4245 avg: 8.7756
+student dice: cup: 0.7862+-0.1561 disc: 0.9356+-0.0322 avg: 0.8609, assd: cup: 9.6949+-6.3850 disc: 5.7572+-2.9083 avg: 7.7260
+
+epoch 17/20:
+teacher dice: cup: 0.7798+-0.1489 disc: 0.9290+-0.0371 avg: 0.8544, assd: cup: 11.1402+-8.3177 disc: 6.6675+-4.0879 avg: 8.9038
+student dice: cup: 0.7792+-0.1575 disc: 0.9377+-0.0322 avg: 0.8584, assd: cup: 10.2584+-6.8495 disc: 5.5728+-2.9147 avg: 7.9156
+
+epoch 18/20:
+teacher dice: cup: 0.7757+-0.1512 disc: 0.9313+-0.0364 avg: 0.8535, assd: cup: 11.4984+-8.1936 disc: 6.4295+-3.9387 avg: 8.9640
+student dice: cup: 0.7749+-0.1594 disc: 0.9360+-0.0328 avg: 0.8555, assd: cup: 10.5070+-7.0079 disc: 5.7255+-2.9818 avg: 8.1163
+
+epoch 19/20:
+teacher dice: cup: 0.7786+-0.1585 disc: 0.9342+-0.0347 avg: 0.8564, assd: cup: 10.5353+-7.0137 disc: 6.0292+-3.3633 avg: 8.2823
+student dice: cup: 0.7802+-0.1572 disc: 0.9399+-0.0307 avg: 0.8600, assd: cup: 9.9539+-6.2402 disc: 5.3421+-2.7533 avg: 7.6480
+
+epoch 20/20:
+teacher dice: cup: 0.7708+-0.1551 disc: 0.9351+-0.0353 avg: 0.8529, assd: cup: 11.4402+-7.6471 disc: 5.8279+-3.2902 avg: 8.6340
+student dice: cup: 0.7762+-0.1592 disc: 0.9405+-0.0311 avg: 0.8584, assd: cup: 10.2345+-6.5502 disc: 5.2967+-2.7934 avg: 7.7656

@@ -24,29 +24,44 @@ def to_multilabel(pre_mask, classes=2):  # notice classes para
 
 
 class add_salt_pepper_noise():
-    def __call__(self, sample):
+    def __init__(self, amount=0.01, prob=0.7):
+        self.amount = amount
+        self.prob = prob
 
+    def __call__(self, sample):
         image = np.array(sample['image']).astype(np.uint8)
         X_imgs_copy = image.copy()
-        # row = image.shape[0]
-        # col = image.shape[1]
         salt_vs_pepper = 0.2
-        amount = 0.004
 
-        num_salt = np.ceil(amount * X_imgs_copy.size * salt_vs_pepper)
-        num_pepper = np.ceil(amount * X_imgs_copy.size * (1.0 - salt_vs_pepper))
+        num_salt = np.ceil(self.amount * X_imgs_copy.size * salt_vs_pepper)
+        num_pepper = np.ceil(self.amount * X_imgs_copy.size * (1.0 - salt_vs_pepper))
 
         seed = random.random()
-        if seed > 0.75:
-            # Add Salt noise
+        if seed > (1.0 - self.prob / 2):
             coords = [np.random.randint(0, i - 1, int(num_salt)) for i in X_imgs_copy.shape]
-            X_imgs_copy[coords[0], coords[1], :] = 1
-        elif seed > 0.5:
-            # Add Pepper noise
+            X_imgs_copy[coords[0], coords[1], :] = 255
+        elif seed > (1.0 - self.prob):
             coords = [np.random.randint(0, i - 1, int(num_pepper)) for i in X_imgs_copy.shape]
             X_imgs_copy[coords[0], coords[1], :] = 0
 
         return {'image': X_imgs_copy,
+                'label': sample['label'],
+                'img_name': sample['img_name']}
+
+
+class GaussianNoise():
+    """添加高斯噪声，在 NormalizeOCTA 之前使用（输入为 uint8 numpy）"""
+    def __init__(self, std=15, prob=0.7):
+        self.std = std
+        self.prob = prob
+
+    def __call__(self, sample):
+        if random.random() > self.prob:
+            return sample
+        image = np.array(sample['image']).astype(np.float32)
+        noise = np.random.normal(0, self.std, image.shape).astype(np.float32)
+        image = np.clip(image + noise, 0, 255).astype(np.uint8)
+        return {'image': image,
                 'label': sample['label'],
                 'img_name': sample['img_name']}
 
@@ -88,28 +103,29 @@ class add_salt_pepper_noise_BraTS():
 
 
 class adjust_light():
+    def __init__(self, prob=0.5, gamma_range=(0.7, 1.5)):
+        self.prob = prob
+        self.gamma_range = gamma_range
+
     def __call__(self, sample):
         image = sample['image']
-        seed = random.random()
-        if seed > 0.5:
-            gamma = random.random() * 3 + 0.5
-            invGamma = 1.0 / gamma
-            table = np.array([((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)]).astype(np.uint8)
-            image = cv2.LUT(np.array(image).astype(np.uint8), table).astype(np.uint8)
-            return {'image': image,
-                    'label': sample['label'],
-                    'img_name': sample['img_name']}
-        else:
+        if random.random() > self.prob:
             return sample
+        gamma = random.uniform(*self.gamma_range)
+        invGamma = 1.0 / gamma
+        table = np.array([((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)]).astype(np.uint8)
+        image = cv2.LUT(np.array(image).astype(np.uint8), table).astype(np.uint8)
+        return {'image': image,
+                'label': sample['label'],
+                'img_name': sample['img_name']}
 
 
 class eraser():
-    def __call__(self, sample, s_l=0.02, s_h=0.06, r_1=0.3, r_2=0.6, v_l=0, v_h=255, pixel_level=False):
+    def __call__(self, sample, s_l=0.04, s_h=0.15, r_1=0.3, r_2=0.6, v_l=0, v_h=255, pixel_level=False):
         image = sample['image']
         img_h, img_w, img_c = image.shape
 
-
-        if random.random() > 0.5:
+        if random.random() > 0.7:
             return sample
 
         while True:

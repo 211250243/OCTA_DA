@@ -477,7 +477,7 @@ parser.add_argument('--model-ema-rate', type=float, default=0.999)
 所以，UDA 任务的一个标准操作是**早停（Early Stopping）**。
 如果在你的任务中，模型在 **Epoch 6 稳定达到了 0.791 的 Dice**（对于域适应来说，这是一个非常有效的提升），那么在这个节点保存并使用 `checkpoint_6.pth.tar` 就是完全合理且正确的做法，不要死磕必须要跑满 20 个 Epoch 且一直上升。
 
-## 质疑
+## 质疑一
 
 > target训练时dice先上升后下降。这就很奇怪，你可以抖但是不能上升了又下来。
 
@@ -504,3 +504,46 @@ parser.add_argument('--model-ema-rate', type=float, default=0.999)
 * **区别对待“粗结构”与“细结构”：** 在原作者的 Fundus 数据集里，视盘/视杯（Cup/Disc）是一大块连续的色块，容错率极高，边缘掉几个像素根本不影响整体 Dice，所以它能稳住。但 OCTA 全是头发丝一样的毛细血管，掉一层皮，这根血管就断了。**所以原作者的代码套在 OCTA 上，必定会暴露这种边缘侵蚀问题。**
 * **Teacher-Student 的双刃剑：** EMA 机制是一把双刃剑。它能提供稳定的伪标签，但也意味着“只要学错了一点，这个错误就会被永久刻进 Teacher 的基因里，逐渐放大”。
 
+## 处理一
+
+### 问题分析
+
+> 现在的情况是经典的 "伪标签漂移（Pseudo-label Drift）"——Teacher Dice 在 epoch 6 达到峰值 0.7910 后持续下降到 0.6883。"任务结果一"已经解释了这是 UDA 在极细血管分割上的固有困难。
+
+不过，当前代码仍有几处可以大幅减缓衰退的优化点。目前代码中 Teacher 持续衰退的主要原因有三个：
+
+1. 没有置信度过滤：Teacher 在血管边缘的概率约 0.4~0.6，硬阈值 0.5 切分后把这些不确定像素强行标为 0 或 1，Student 学了错误的边缘标签，通过 EMA 污染 Teacher。
+2. 强增强太弱：add_salt_pepper_noise 只有约 25% 概率触发，噪声量仅 0.4%；eraser 也只遮挡 2~6% 面积。Student 几乎没被"挑战"到。
+3. 没有早停/保存最优模型：跑完 20 epoch 只存了最后一个退化的 checkpoint。
+
+### 修改总结（4 处关键改动）
+
+**1. 置信度掩码过滤（最核心改动）**
+
+在 `adapt_epoch` 中，只在 Teacher 预测置信度 > 0.8 或 < 0.2 的像素上计算 loss。这直接解决了"血管边缘 0.4\~0.6 不确定像素被强行 0/1 标注"导致的确认偏差问题。不确定的像素不参与训练，Student 不会学到错误的边缘标签，也就不会通过 EMA 污染 Teacher。
+
+**2. 增强 Strong Augmentation 强度**
+
+| 改动 | 改前 | 改后 |
+|------|------|------|
+| 椒盐噪声触发概率 | 25%（salt）或25%（pepper） | 35%（salt）或35%（pepper） |
+| 噪声量 `amount` | 0.004 | 0.01 |
+| 盐噪声值 | 1（几乎不可见） | 255（白色） |
+| 高斯噪声 | 无 | std=15, prob=0.7 |
+| Eraser 遮挡面积 | 2\~6%, prob=50% | 4\~15%, prob=70% |
+| 光照扰动 gamma | [0.5, 3.5] 太极端 | [0.7, 1.5] 合理范围 |
+
+更强的增强迫使 Student 从噪声中学习鲁棒特征，而非机械拟合 Teacher 输出。
+
+**3. Best Model 保存 + 早停（patience=6）**
+
+每个 epoch 后检查 Teacher Dice，保存历史最优 checkpoint (`best_teacher.pth.tar`)。如果连续 6 个 epoch 没有超过最佳 Dice，自动停止训练，避免继续退化。
+
+**4. 降低学习率**
+
+- LR: 1e-4 → 5e-5（更温和的 Student 更新，减少 EMA 污染）
+- LR decay rate: 0.9 → 0.95（衰减更慢，保持后期学习能力）
+
+---
+
+预期行为：Teacher Dice 应该在更多 epoch 上保持稳定甚至缓慢上升，且最终会自动早停在最佳位置，`best_teacher.pth.tar` 就是你要的最优域适应模型。

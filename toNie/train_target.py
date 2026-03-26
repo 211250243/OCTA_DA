@@ -7,8 +7,8 @@ parser.add_argument('--out-stride', type=int, default=16)
 parser.add_argument('--sync-bn', type=bool, default=True)
 parser.add_argument('--freeze-bn', type=bool, default=False)
 parser.add_argument('--epoch', type=int, default=20)
-parser.add_argument('--lr', type=float, default=1e-4)
-parser.add_argument('--lr-decrease-rate', type=float, default=0.9, help='ratio multiplied to initial lr')
+parser.add_argument('--lr', type=float, default=5e-5)
+parser.add_argument('--lr-decrease-rate', type=float, default=0.95, help='ratio multiplied to initial lr')
 parser.add_argument('--lr-decrease-epoch', type=int, default=1, help='interval epoch number for lr decrease')
 
 parser.add_argument('--data-dir', default='../framework/datasets/OCTA-500')
@@ -125,10 +125,23 @@ def adapt_epoch(model_t, model_s, optim, train_loader, args, feature_bank, pred_
         # get hard pseudo label
         pseudo_labels = soft_label_to_hard(predictions_tea_w_sigmoid, args.pseudo_label_threshold)
 
+        # 置信度掩码：只在 Teacher 高置信度区域（>0.8 或 <0.2）计算 loss
+        confidence_mask = ((predictions_tea_w_sigmoid > 0.8) | (predictions_tea_w_sigmoid < 0.2)).float()
 
-        bceloss = torch.nn.BCELoss()
-        loss_bce = bceloss(predictions_stu_s_sigmoid, pseudo_labels)
-        loss_dice = DiceLoss(predictions_stu_s_sigmoid, pseudo_labels)
+        # 如果整个 batch 没有高置信度像素，退化为全局 loss
+        if confidence_mask.sum() < 10:
+            confidence_mask = torch.ones_like(confidence_mask)
+
+        # BCE with confidence mask
+        bceloss_fn = torch.nn.BCELoss(reduction='none')
+        loss_bce_pixel = bceloss_fn(predictions_stu_s_sigmoid, pseudo_labels)
+        loss_bce = (loss_bce_pixel * confidence_mask).sum() / confidence_mask.sum()
+
+        # Dice Loss on confident region only
+        masked_pred = predictions_stu_s_sigmoid * confidence_mask
+        masked_target = pseudo_labels * confidence_mask
+        loss_dice = DiceLoss(masked_pred, masked_target)
+
         loss = loss_bce + loss_dice
 
         loss.backward()
@@ -197,13 +210,12 @@ def main():
         trans.ToTensorOCTA()
     ])
 
-    # 强增强（给 Student）：保持空间位置绝对一致 (Resize(512))
-    # 但加入像素级的破坏（噪声、遮挡、光照），迫使 Student 学习鲁棒特征
     composed_transforms_train = transforms.Compose([
         trans.Resize(512),
-        trans.add_salt_pepper_noise(), # 强扰动 1：椒盐噪声
-        trans.eraser(),                # 强扰动 2：随机遮挡一块区域 (Cutout)
-        # trans.adjust_light(),        # 可选：如果报错可不加
+        trans.add_salt_pepper_noise(amount=0.01, prob=0.7),
+        trans.GaussianNoise(std=15, prob=0.7),
+        trans.eraser(),
+        trans.adjust_light(),
         trans.NormalizeOCTA(),
         trans.ToTensorOCTA()
     ])
@@ -264,6 +276,10 @@ def main():
     args.out_file.write(log_str + '\n')
     args.out_file.flush()
 
+    best_dice = 0.0
+    patience_counter = 0
+    patience = 6
+
     for epoch in range(args.epoch):
 
         log_str = '\nepoch {}/{}:'.format(epoch+1, args.epoch)
@@ -281,11 +297,29 @@ def main():
         args.out_file.write(log_str + '\n')
         args.out_file.flush()
 
-        avg_dice, std_dice, avg_assd, std_assd = eval(model_s, test_loader)
-        log_str = ("student dice: %.4f+-%.4f, assd: %.4f+-%.4f" % (avg_dice, std_dice, avg_assd, std_assd))
+        avg_dice_s, std_dice_s, avg_assd_s, std_assd_s = eval(model_s, test_loader)
+        log_str = ("student dice: %.4f+-%.4f, assd: %.4f+-%.4f" % (avg_dice_s, std_dice_s, avg_assd_s, std_assd_s))
         print(log_str)
         args.out_file.write(log_str + '\n')
         args.out_file.flush()
+
+        if avg_dice > best_dice:
+            best_dice = avg_dice
+            patience_counter = 0
+            torch.save({'model_state_dict': model_t.state_dict()},
+                       args.out + '/best_teacher.pth.tar')
+            log_str = "  => best teacher saved (dice=%.4f)" % best_dice
+            print(log_str)
+            args.out_file.write(log_str + '\n')
+            args.out_file.flush()
+        else:
+            patience_counter += 1
+            if patience_counter >= patience:
+                log_str = "  => early stopping at epoch %d (best dice=%.4f)" % (epoch+1, best_dice)
+                print(log_str)
+                args.out_file.write(log_str + '\n')
+                args.out_file.flush()
+                break
 
     torch.save({'model_state_dict': model_t.state_dict()}, args.out + '/after_adaptation.pth.tar')
 
