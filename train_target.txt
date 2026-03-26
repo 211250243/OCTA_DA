@@ -1,0 +1,104 @@
+train_target.py
+==========================================
+gpu:0
+model_file:./logs_train/Domain1/20260325_094606.319125/checkpoint_200.pth.tar
+model:Deeplab
+out_stride:16
+sync_bn:True
+freeze_bn:False
+epoch:20
+lr:0.0001
+lr_decrease_rate:0.9
+lr_decrease_epoch:1
+data_dir:../framework/datasets/OCTA-500
+dataset:Domain2
+model_source:Domain1
+batch_size:8
+model_ema_rate:0.999
+pseudo_label_threshold:0.5
+mean_loss_calc_bound_ratio:0.2
+out:/remote-home/nieercong/OCTA/toNie/logs_target/Domain2/20260326_155054.362455
+out_file:<_io.TextIOWrapper name='/remote-home/nieercong/OCTA/toNie/logs_target/Domain2/20260326_155054.362455/20260326_155054.362455.txt' mode='w' encoding='UTF-8'>
+
+==> Loading DeepLab model file: ./logs_train/Domain1/20260325_094606.319125/checkpoint_200.pth.tar
+initial dice: 0.7780+-0.0111, assd: 1.2921+-0.1542
+
+epoch 1/20:
+teacher dice: 0.7792+-0.0109, assd: 1.2789+-0.1558
+student dice: 0.3364+-0.0041, assd: 5.7610+-1.1668
+
+epoch 2/20:
+teacher dice: 0.7826+-0.0108, assd: 1.2646+-0.1544
+student dice: 0.5692+-0.0041, assd: 3.4082+-0.8734
+
+epoch 3/20:
+teacher dice: 0.7865+-0.0102, assd: 1.2403+-0.1683
+student dice: 0.6578+-0.0107, assd: 2.3708+-0.5146
+
+epoch 4/20:
+teacher dice: 0.7889+-0.0099, assd: 1.2396+-0.1787
+student dice: 0.6972+-0.0008, assd: 2.1132+-0.4185
+
+epoch 5/20:
+teacher dice: 0.7906+-0.0084, assd: 1.2603+-0.2088
+student dice: 0.6821+-0.0000, assd: 2.2012+-0.5474
+
+epoch 6/20:
+teacher dice: 0.7911+-0.0069, assd: 1.2889+-0.2318
+student dice: 0.7190+-0.0055, assd: 1.9251+-0.4049
+
+epoch 7/20:
+teacher dice: 0.7899+-0.0061, assd: 1.3266+-0.2587
+student dice: 0.7318+-0.0088, assd: 1.7974+-0.3857
+
+epoch 8/20:
+teacher dice: 0.7871+-0.0055, assd: 1.3890+-0.2964
+student dice: 0.7224+-0.0066, assd: 1.8235+-0.4136
+
+epoch 9/20:
+teacher dice: 0.7826+-0.0049, assd: 1.4814+-0.3438
+student dice: 0.7265+-0.0126, assd: 1.8417+-0.4930
+
+epoch 10/20:
+teacher dice: 0.7776+-0.0038, assd: 1.5764+-0.4107
+student dice: 0.7293+-0.0128, assd: 1.7844+-0.4543
+
+epoch 11/20:
+teacher dice: 0.7725+-0.0026, assd: 1.6724+-0.4586
+student dice: 0.7352+-0.0061, assd: 1.8280+-0.4033
+
+epoch 12/20:
+teacher dice: 0.7663+-0.0013, assd: 1.7923+-0.5164
+student dice: 0.7292+-0.0080, assd: 1.8434+-0.4609
+
+epoch 13/20:
+teacher dice: 0.7598+-0.0000, assd: 1.9230+-0.5756
+student dice: 0.7061+-0.0207, assd: 2.0936+-0.8128
+
+epoch 14/20:
+teacher dice: 0.7518+-0.0011, assd: 2.0687+-0.6459
+student dice: 0.7197+-0.0146, assd: 2.0343+-0.5735
+
+epoch 15/20:
+teacher dice: 0.7431+-0.0019, assd: 2.2173+-0.7089
+student dice: 0.7093+-0.0201, assd: 2.2556+-0.8904
+
+epoch 16/20:
+teacher dice: 0.7338+-0.0031, assd: 2.3904+-0.7783
+student dice: 0.7073+-0.0179, assd: 2.3191+-0.7444
+
+epoch 17/20:
+teacher dice: 0.7244+-0.0041, assd: 2.5685+-0.8491
+student dice: 0.7043+-0.0120, assd: 2.4002+-0.6725
+
+epoch 18/20:
+teacher dice: 0.7131+-0.0052, assd: 2.7569+-0.9268
+student dice: 0.6974+-0.0089, assd: 2.6358+-0.7059
+
+epoch 19/20:
+teacher dice: 0.7010+-0.0060, assd: 2.9662+-1.0055
+student dice: 0.6892+-0.0108, assd: 2.7615+-0.7677
+
+epoch 20/20:
+teacher dice: 0.6882+-0.0070, assd: 3.1819+-1.0883
+student dice: 0.6797+-0.0128, assd: 2.9788+-0.8572

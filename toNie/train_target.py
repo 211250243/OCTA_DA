@@ -6,7 +6,7 @@ parser.add_argument('--model', type=str, default='Deeplab', help='Deeplab')
 parser.add_argument('--out-stride', type=int, default=16)
 parser.add_argument('--sync-bn', type=bool, default=True)
 parser.add_argument('--freeze-bn', type=bool, default=False)
-parser.add_argument('--epoch', type=int, default=8)
+parser.add_argument('--epoch', type=int, default=20)
 parser.add_argument('--lr', type=float, default=1e-4)
 parser.add_argument('--lr-decrease-rate', type=float, default=0.9, help='ratio multiplied to initial lr')
 parser.add_argument('--lr-decrease-epoch', type=int, default=1, help='interval epoch number for lr decrease')
@@ -16,7 +16,7 @@ parser.add_argument('--dataset', type=str, default='Domain2')
 parser.add_argument('--model-source', type=str, default='Domain1')
 parser.add_argument('--batch-size', type=int, default=8)
 
-parser.add_argument('--model-ema-rate', type=float, default=0.995)
+parser.add_argument('--model-ema-rate', type=float, default=0.999)
 parser.add_argument('--pseudo-label-threshold', type=float, default=0.5)
 parser.add_argument('--mean-loss-calc-bound-ratio', type=float, default=0.2)
 
@@ -126,14 +126,10 @@ def adapt_epoch(model_t, model_s, optim, train_loader, args, feature_bank, pred_
         pseudo_labels = soft_label_to_hard(predictions_tea_w_sigmoid, args.pseudo_label_threshold)
 
 
-        bceloss = torch.nn.BCELoss(reduction='none')
-        loss_seg_pixel = bceloss(predictions_stu_s_sigmoid, pseudo_labels)
-
-        mean_loss_weight_mask = torch.ones(pseudo_labels.size()).cuda()
-        mean_loss_weight_mask[:, 0, ...][pseudo_labels[:, 0, ...] == 0] = loss_weight
-        loss_mask = mean_loss_weight_mask
-
-        loss = torch.sum(loss_seg_pixel * loss_mask) / torch.sum(loss_mask)
+        bceloss = torch.nn.BCELoss()
+        loss_bce = bceloss(predictions_stu_s_sigmoid, pseudo_labels)
+        loss_dice = DiceLoss(predictions_stu_s_sigmoid, pseudo_labels)
+        loss = loss_bce + loss_dice
 
         loss.backward()
         optim.step()
@@ -194,13 +190,20 @@ def main():
     args.out_file.flush()
 
     # dataset
-    composed_transforms_train = transforms.Compose([
+    # 弱增强（给 Teacher）：仅仅改变大小，归一化
+    composed_transforms_test = transforms.Compose([
         trans.Resize(512),
         trans.NormalizeOCTA(),
         trans.ToTensorOCTA()
     ])
-    composed_transforms_test = transforms.Compose([
+
+    # 强增强（给 Student）：保持空间位置绝对一致 (Resize(512))
+    # 但加入像素级的破坏（噪声、遮挡、光照），迫使 Student 学习鲁棒特征
+    composed_transforms_train = transforms.Compose([
         trans.Resize(512),
+        trans.add_salt_pepper_noise(), # 强扰动 1：椒盐噪声
+        trans.eraser(),                # 强扰动 2：随机遮挡一块区域 (Cutout)
+        # trans.adjust_light(),        # 可选：如果报错可不加
         trans.NormalizeOCTA(),
         trans.ToTensorOCTA()
     ])
@@ -268,21 +271,7 @@ def main():
         args.out_file.write(log_str + '\n')
         args.out_file.flush()
 
-        not_cup_loss_sum = torch.FloatTensor([0]).cuda()
-        cup_loss_sum = torch.FloatTensor([0]).cuda()
-        not_cup_loss_num = 0
-        cup_loss_num = 0
-        lower_bound = args.pseudo_label_threshold * args.mean_loss_calc_bound_ratio
-        upper_bound = 1 - ((1 - args.pseudo_label_threshold) * args.mean_loss_calc_bound_ratio)
-        for pred_i in pred_bank.values():
-            not_cup_loss_sum += torch.sum(
-                -torch.log(1 - pred_i[0, ...][(pred_i[0, ...] < args.pseudo_label_threshold) * (pred_i[0, ...] > lower_bound)]))
-            not_cup_loss_num += torch.sum((pred_i[0, ...] < args.pseudo_label_threshold) * (pred_i[0, ...] > lower_bound))
-            cup_loss_sum += torch.sum(-torch.log(pred_i[0, ...][(pred_i[0, ...] > args.pseudo_label_threshold) * (pred_i[0, ...] < upper_bound)]))
-            cup_loss_num += torch.sum((pred_i[0, ...] > args.pseudo_label_threshold) * (pred_i[0, ...] < upper_bound))
-        loss_weight = (cup_loss_sum.item() / cup_loss_num) / (not_cup_loss_sum.item() / not_cup_loss_num)
-
-        adapt_epoch(model_t, model_s, optim, train_loader, args, feature_bank, pred_bank, loss_weight=loss_weight)
+        adapt_epoch(model_t, model_s, optim, train_loader, args, feature_bank, pred_bank, loss_weight=1.0)
 
         scheduler.step()
 
