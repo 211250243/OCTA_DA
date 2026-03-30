@@ -1,0 +1,84 @@
+train_target.py
+==========================================
+gpu:0
+model_file:./logs_train/Domain1/20260325_094606.319125/checkpoint_200.pth.tar
+model:Deeplab
+out_stride:16
+sync_bn:True
+freeze_bn:False
+epoch:20
+lr:5e-05
+lr_decrease_rate:0.95
+lr_decrease_epoch:1
+data_dir:../framework/datasets/OCTA-500
+dataset:Domain2
+model_source:Domain1
+batch_size:8
+model_ema_rate:0.999
+pseudo_label_threshold:0.5
+mean_loss_calc_bound_ratio:0.2
+out:/remote-home/nieercong/OCTA/toNie/logs_target/Domain2/20260326_173053.109608
+out_file:<_io.TextIOWrapper name='/remote-home/nieercong/OCTA/toNie/logs_target/Domain2/20260326_173053.109608/20260326_173053.109608.txt' mode='w' encoding='UTF-8'>
+
+==> Loading DeepLab model file: ./logs_train/Domain1/20260325_094606.319125/checkpoint_200.pth.tar
+initial dice: 0.7780+-0.0111, assd: 1.2921+-0.1542
+
+epoch 1/20:
+teacher dice: 0.7787+-0.0110, assd: 1.2853+-0.1527
+student dice: 0.3454+-0.0221, assd: 5.9966+-1.4212
+  => best teacher saved (dice=0.7787)
+
+epoch 2/20:
+teacher dice: 0.7805+-0.0108, assd: 1.2705+-0.1533
+student dice: 0.4713+-0.0036, assd: 4.8130+-0.8352
+  => best teacher saved (dice=0.7805)
+
+epoch 3/20:
+teacher dice: 0.7831+-0.0108, assd: 1.2525+-0.1513
+student dice: 0.6219+-0.0055, assd: 2.9420+-0.7822
+  => best teacher saved (dice=0.7831)
+
+epoch 4/20:
+teacher dice: 0.7864+-0.0103, assd: 1.2362+-0.1595
+student dice: 0.6657+-0.0105, assd: 2.5912+-0.5093
+  => best teacher saved (dice=0.7864)
+
+epoch 5/20:
+teacher dice: 0.7885+-0.0101, assd: 1.2329+-0.1709
+student dice: 0.7003+-0.0020, assd: 2.2357+-0.3519
+  => best teacher saved (dice=0.7885)
+
+epoch 6/20:
+teacher dice: 0.7902+-0.0095, assd: 1.2294+-0.1796
+student dice: 0.7217+-0.0103, assd: 2.3324+-0.8274
+  => best teacher saved (dice=0.7902)
+
+epoch 7/20:
+teacher dice: 0.7912+-0.0082, assd: 1.2483+-0.1986
+student dice: 0.7219+-0.0103, assd: 2.3075+-0.8142
+  => best teacher saved (dice=0.7912)
+
+epoch 8/20:
+teacher dice: 0.7911+-0.0072, assd: 1.2687+-0.2125
+student dice: 0.7259+-0.0085, assd: 2.2058+-0.7828
+
+epoch 9/20:
+teacher dice: 0.7900+-0.0067, assd: 1.2960+-0.2275
+student dice: 0.7270+-0.0093, assd: 2.2428+-0.7958
+
+epoch 10/20:
+teacher dice: 0.7878+-0.0062, assd: 1.3287+-0.2571
+student dice: 0.7313+-0.0094, assd: 2.1582+-0.7470
+
+epoch 11/20:
+teacher dice: 0.7843+-0.0060, assd: 1.3703+-0.2776
+student dice: 0.7332+-0.0089, assd: 2.0562+-0.6539
+
+epoch 12/20:
+teacher dice: 0.7803+-0.0057, assd: 1.4260+-0.3055
+student dice: 0.7336+-0.0082, assd: 1.9250+-0.6256
+
+epoch 13/20:
+teacher dice: 0.7757+-0.0046, assd: 1.4923+-0.3448
+student dice: 0.7360+-0.0083, assd: 1.7514+-0.2664
+  => early stopping at epoch 13 (best dice=0.7912)

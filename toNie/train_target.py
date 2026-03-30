@@ -221,7 +221,8 @@ def main():
     ])
 
     split_train = 'train'
-    split_test = 'value'
+    # 评估与 early stopping 均在官方 test（6mm 共 50 张）上计算 Dice/ASSD
+    split_test = 'test'
 
     dataset_train = octa_dataloader.OCTASegmentation_2transform(base_dir=args.data_dir, dataset=args.dataset,
                                                                 split=split_train,
