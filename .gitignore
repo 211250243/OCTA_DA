@@ -47,6 +47,7 @@ mlruns/
 comet_ml/
 clearml/
 lightning_logs/
+infer_vis_Domain2_test/
 
 # Model / tensor artifacts
 *.pth
